@@ -9,6 +9,9 @@ import scipy.stats as stats
 from pixel_generator.vec2face.im_decoder import Decoder
 from sixdrepnet.model import utils
 
+import os
+from pathlib import Path    # Bernardo
+
 
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
@@ -131,7 +134,8 @@ class MaskedGenerativeEncoderViT(nn.Module):
         assert not (use_rep and use_class_label)
 
         # --------------------------------------------------------------------------
-        vqgan_config = OmegaConf.load('configs/vec2face/vqgan.yaml').model
+        # vqgan_config = OmegaConf.load('configs/vec2face/vqgan.yaml').model    # original
+        vqgan_config = OmegaConf.load(os.path.join(str(Path(__file__).resolve().parents[2]), 'configs/vec2face/vqgan.yaml')).model      # Bernardo
         self.token_emb = BertEmbeddings(hidden_size=embed_dim,
                                         max_position_embeddings=49 + 1,
                                         dropout=0.1)

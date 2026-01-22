@@ -1,5 +1,9 @@
-# python image_generation_with_reference.py --image_file /home/bjgbiesseck/GitHub/bjgbiesseck_Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs/joacquin_bbox00_conf0.9989922642707825.png --model_weights weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references
-# python image_generation_with_reference.py --image_file /home/bjgbiesseck/GitHub/bjgbiesseck_Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs --model_weights weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references
+# on generate_new_ids
+# python image_generation_with_reference_and_similarity.py --image_file /home/bjgbiesseck/GitHub/bjgbiesseck_Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs/joacquin_bbox00_conf0.9989922642707825.png --model_weights ../weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references --similarity-range [0.5,0.69]
+
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import torch
 import argparse
@@ -11,9 +15,12 @@ import numpy as np
 # from glob import glob    # original
 import glob                # Bernardo
 import os
+
 from models import iresnet
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
+import random
+
 
 
 class ImageDataset(Dataset):
@@ -65,6 +72,16 @@ def get_args_parser():
                         help='Mask ratio distribution std')
     parser.add_argument('--model_weights', default='',
                         help='model weights')
+
+    def parse_list_arg(arg_string):
+        try:
+            values = [float(item.strip().strip('[').strip(']')) for item in arg_string.split(',')]
+            return values
+        except ValueError:
+            raise argparse.ArgumentTypeError("List values must be floats separated by commas, e.g., '0.5,0.69'")
+
+    parser.add_argument("--similarity-range",  type=parse_list_arg, default=[0.5,0.69], required=True, help='A list of float values separated by commas, e.g., 0.5,0.69 or [0.5,0.69]')
+
     return parser.parse_args()
 
 
@@ -96,7 +113,7 @@ def sample_nearby_vectors(base_vector, epsilons, percentages=[0.4, 0.4, 0.2]):
     return generated_samples
 
 
-def _create_fr_model(model_path="./weights/magface-r100-glint360k.pth", depth="100"):
+def _create_fr_model(model_path="../weights/magface-r100-glint360k.pth", depth="100"):
     model = iresnet(depth)
     model.load_state_dict(torch.load(model_path))
     model.eval()
@@ -134,6 +151,55 @@ def processing_images(file_path, feature_model):
     return features, im_ids
 
 
+def get_random_float(min_max_list):
+    if len(min_max_list) == 1:
+        min_max_list.append(min_max_list[0])
+    min_val, max_val = min_max_list
+    factor = 100
+    
+    scaled_min = round(min_val * factor)
+    scaled_max = round(max_val * factor)
+    
+    random_int = random.randint(scaled_min, scaled_max)
+    random_float = random_int / factor
+    return random_float
+
+
+def rotate_embedding_by_cosine_similarity(v1: torch.Tensor, cosine_similarity: float) -> torch.Tensor:
+    v1 = torch.squeeze(v1)
+    if not (0.0 <= cosine_similarity <= 1.0):
+        raise ValueError("Cosine similarity must be between 0.0 and 1.0.")
+    if v1.dim() != 1 or v1.size(0) != 512:
+        raise ValueError("Input tensor must be 512-dimensional (1D tensor).")
+    
+    theta = torch.acos(torch.tensor(cosine_similarity, device=v1.device))
+    
+    if torch.isclose(theta, torch.tensor(0.0).to(torch.float32)):
+        return v1.clone()
+    
+    v1_norm = torch.linalg.norm(v1).to(torch.float32)
+    if torch.isclose(v1_norm, torch.tensor(0.0).to(torch.float32)):
+        return v1.clone()
+        
+    u1 = v1 / v1_norm
+    random_vector = torch.randn_like(v1)
+    projection_onto_u1 = torch.dot(random_vector, u1) * u1
+    u2_raw = random_vector - projection_onto_u1
+    u2_norm = torch.linalg.norm(u2_raw).to(torch.float32)
+    
+    if torch.isclose(u2_norm, torch.tensor(0.0).to(torch.float32)):
+        raise RuntimeError("Failed to generate a non-collinear random vector. Try running again.")
+
+    u2 = u2_raw / u2_norm
+    u1_prime = (u1 * torch.cos(theta)) + (u2 * torch.sin(theta))
+    v1_prime = u1_prime * v1_norm
+    v1_prime = torch.unsqueeze(v1_prime, 0)
+    return v1_prime
+
+
+
+
+
 if __name__ == '__main__':
     args = get_args_parser()
     j = 0
@@ -164,12 +230,26 @@ if __name__ == '__main__':
     # quality model
     scorer = _create_fr_model().to(device)
     # id model
-    fr_model = _create_fr_model("./weights/arcface-r100-glint360k.pth").to(device)
+    fr_model = _create_fr_model("../weights/arcface-r100-glint360k.pth").to(device)
 
     bs_factor = 1
     reference_ids, im_ids = processing_images(image_path, fr_model)
     im_ids = [item for item in im_ids for _ in range(example)]
-    expanded_ids = torch.repeat_interleave(reference_ids, example, dim=0).to(torch.float32)
+
+
+    
+    # Get a random similarity
+    similarity = get_random_float(args.similarity_range)
+    print('similarity:', similarity)
+
+    # Generate new identity embedding
+    new_id_emb = rotate_embedding_by_cosine_similarity(reference_ids, similarity)
+    # new_id_emb = new_id_emb/torch.norm(new_id_emb, dim=1, keepdim=True)   # normalize embedding
+    
+
+
+    # expanded_ids = torch.repeat_interleave(reference_ids, example, dim=0).to(torch.float32)
+    expanded_ids = torch.repeat_interleave(new_id_emb, example, dim=0).to(torch.float32)
     samples = sample_nearby_vectors(expanded_ids,
                                     epsilons=[0.2],
                                     percentages=[1.]).to(torch.float32)
