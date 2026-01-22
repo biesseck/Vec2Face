@@ -1,5 +1,8 @@
 __pycache__
 weights/
 generated_images/
+generated_images_ref/
+generated_pose_images/
+center_feature_examples.npy
 .idea/
 .toupdate/
