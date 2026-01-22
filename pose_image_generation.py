@@ -1,3 +1,5 @@
+# python pose_image_generation.py --model_weights weights/vec2face_generator.pth --batch_size 5 --example 10 --start_end 0:10 --center_feature center_feature_examples.npy --name test --pose 45 --image_quality 25
+
 import torch
 import argparse
 import pixel_generator.vec2face.model_vec2face as model_vec2face

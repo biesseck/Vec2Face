@@ -1,3 +1,6 @@
+# python image_generation_with_reference.py --image_file /home/bjgbiesseck/GitHub/Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs/joacquin_bbox00_conf0.9989922642707825.png --model_weights weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references
+# python image_generation_with_reference.py --image_file /home/bjgbiesseck/GitHub/Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs --model_weights weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references
+
 import torch
 import argparse
 import pixel_generator.vec2face.model_vec2face as model_vec2face
@@ -5,7 +8,8 @@ import imageio
 from tqdm import tqdm
 import torch.optim as optim
 import numpy as np
-from glob import glob
+# from glob import glob    # original
+import glob                # Bernardo
 import os
 from models import iresnet
 from PIL import Image
@@ -101,11 +105,14 @@ def _create_fr_model(model_path="./weights/magface-r100-glint360k.pth", depth="1
 
 def processing_images(file_path, feature_model):
     if os.path.isdir(file_path):
-        ref_images = glob(f"{file_path}/*")
+        # ref_images = glob(f"{file_path}/*")                   # original
+        ref_images = glob.glob(f"{glob.escape(file_path)}/*")   # Bernardo
     elif os.path.isfile(file_path):
-        ref_images = np.genfromtxt(file_path, str)
+        # ref_images = np.genfromtxt(file_path, str)            # original
+        ref_images = [file_path]                                # Bernardo
     else:
         raise AttributeError("Please give either a folder path of images or a file path of images.")
+    
     dataset = ImageDataset(ref_images)
 
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, pin_memory=True)
