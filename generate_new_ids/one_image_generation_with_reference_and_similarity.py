@@ -1,5 +1,5 @@
 # on generate_new_ids
-# python image_generation_with_reference_and_similarity.py --image_file /home/bjgbiesseck/GitHub/bjgbiesseck_Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs/joacquin_bbox00_conf0.9989922642707825.png --model_weights ../weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references --similarity-range [0.5,0.69]
+# python one_image_generation_with_reference_and_similarity.py --image_file /home/bjgbiesseck/GitHub/bjgbiesseck_Vec2Face/asset/face_examples_DETECTED_FACES_RETINAFACE_scales=[1.0]_nms=0.4/imgs/joacquin_bbox00_conf0.9989922642707825.png --model_weights ../weights/vec2face_generator.pth --batch_size 5 --example 10 --name images-of-references --similarity-range [0.5,0.69]
 
 import sys
 from pathlib import Path
