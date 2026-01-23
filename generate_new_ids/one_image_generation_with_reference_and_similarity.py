@@ -85,11 +85,11 @@ def get_args_parser():
     return parser.parse_args()
 
 
-def save_images(images, id_num, root, name):
+def save_images(images, id_num, root, name, similarity):
     global j, prev_id
     save_root = f"{root}/{name}"
     for i, image in enumerate(images):
-        save_folder = f"{save_root}/{id_num[i]}/"
+        save_folder = f"{save_root}/{id_num[i]}_similarity={similarity}/"
         os.makedirs(save_folder, exist_ok=True)
         if prev_id != id_num[i]:
             prev_id = id_num[i]
@@ -267,4 +267,5 @@ if __name__ == '__main__':
         save_images(((image.permute(0, 2, 3, 1).detach().cpu().numpy() + 1) / 2 * 255).clip(0, 255).astype(np.uint8),
                     im_ids[i: i + args.batch_size],
                     "generated_images_ref",
-                    name)
+                    name,
+                    similarity)

@@ -3,6 +3,7 @@ weights/
 generated_images/
 generated_images_ref/
 generated_pose_images/
+generate_new_ids/**/*.jpg
 center_feature_examples.npy
 .idea/
 .toupdate/
