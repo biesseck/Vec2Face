@@ -234,6 +234,8 @@ if __name__ == '__main__':
 
     bs_factor = 1
     reference_ids, im_ids = processing_images(image_path, fr_model)
+    if reference_ids.shape[0] > 1:
+        reference_ids = reference_ids.mean(axis=0, keepdim=True)
     im_ids = [item for item in im_ids for _ in range(example)]
 
 
